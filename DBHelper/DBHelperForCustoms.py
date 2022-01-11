@@ -166,18 +166,43 @@ class Helper:
         """关闭与数据库的会话。"""
         self.session.close()
 
-    def add_export_amount_from_list(self, info_list, year):
+    def add_export_amount_from_list(self, info_list, year, is_thread=False):
         """向出口表中添加数据。"""
         temp = self.ExportAmount()
-        self.__add_item_to_database(temp, info_list, year)
+        if is_thread:
+            self.__add_item_to_database_for_thread(temp, info_list, year)
+        else:
+            self.__add_item_to_database(temp, info_list, year)
 
-    def add_import_amount_from_list(self, info_list, year):
+    def add_import_amount_from_list(self, info_list, year, is_thread=False):
         """向进口表中添加数据。"""
         temp = self.ImportAmount()
-        self.__add_item_to_database(temp, info_list, year)
+        if is_thread:
+            self.__add_item_to_database_for_thread(temp, info_list, year)
+        else:
+            self.__add_item_to_database(temp, info_list, year)
 
     def __add_item_to_database(self, temp, info_list, year):
         """向数据库表中添加数据。具体表由temp的数据类型决定。"""
+        temp = self.split_info_list(temp, info_list)
+        # 对应年份
+        temp.year = year
+
+        # 添加此向数据到数据库（准备提交）
+        self.session.add(temp)
+        # 提交到数据库
+        self.session.commit()
+
+    def __add_item_to_database_for_thread(self, temp, info_list, year):
+        """向数据库表中添加数据。具体表由temp的数据类型决定。用于多线程操作。"""
+        temp = self.split_info_list(temp, info_list)
+        # 对应年份
+        temp.year = year
+
+        # 添加此向数据到数据库（准备提交）
+        self.session.add(temp)
+
+    def split_info_list(self, temp, info_list):
         temp.category = info_list[0]
         temp.Myanmar = info_list[1]
         temp.China_Hong_Kong = info_list[2]
@@ -223,15 +248,9 @@ class Helper:
         temp.United_States = info_list[42]
         temp.Australia = info_list[43]
         temp.New_Zealand = info_list[44]
-        # 对应年份
-        temp.year = year
+        return temp
 
-        # 添加此向数据到数据库（准备提交）
-        self.session.add(temp)
-        # 提交到数据库
-        self.session.commit()
-
-    def add_category(self, category_id, description, parent_id):
+    def add_category(self, category_id, description, parent_id, is_thread=False):
         """添加商品种类数据。"""
         temp = self.Category()
         temp.category_id = category_id
@@ -239,5 +258,9 @@ class Helper:
         temp.parent_id = parent_id
         # 添加此向数据到数据库（准备提交）
         self.session.add(temp)
-        # 提交到数据库
+        if not is_thread:
+            # 提交到数据库
+            self.session.commit()
+
+    def commit(self):
         self.session.commit()
